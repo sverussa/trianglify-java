@@ -1,0 +1,11 @@
+build/
+.gradle/
+saida/
+*.class
+
+# IDE
+.idea/
+*.iml
+
+# macOS
+.DS_Store

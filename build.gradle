@@ -1,0 +1,46 @@
+plugins {
+    id 'application'
+}
+
+group = 'com.zyn'
+version = '1.0.0'
+
+// O projeto não tem dependências externas: a triangulação, as conversões de cor e
+// a rasterização usam apenas a biblioteca padrão do JDK.
+repositories {
+    mavenCentral()
+}
+
+application {
+    mainClass = 'com.zyn.trianglify.Main'
+    applicationName = 'trianglify'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // Compila para Java 17 com o JDK que estiver instalado, sem exigir um JDK 17.
+    options.release = 17
+}
+
+// Permite `java -jar build/libs/trianglify-java-<versão>.jar`
+tasks.named('jar') {
+    manifest {
+        attributes('Main-Class': application.mainClass.get(),
+                   'Implementation-Title': 'Trianglify',
+                   'Implementation-Version': project.version)
+    }
+}
+
+// `./gradlew run` deve enxergar o trianglify.properties da raiz do projeto.
+tasks.named('run') {
+    workingDir = projectDir
+    // Deixa a saída do programa aparecer mesmo com --console=plain
+    standardInput = System.in
+}
+
+// Atalho: gera a imagem e mostra onde ela foi parar.
+tasks.register('gerar') {
+    group = 'application'
+    description = 'Gera a imagem a partir de trianglify.properties'
+    dependsOn tasks.named('run')
+}
