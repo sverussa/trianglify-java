@@ -5,7 +5,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Paletas ColorBrewer (Cindy Brewer), porte de {@code src/utils/colorbrewer.js}.
+ * Paletas ColorBrewer, porte de {@code src/utils/colorbrewer.js}.
+ *
+ * <p>Especificações de cor © 2002 Cynthia Brewer, Mark Harrower e The Pennsylvania
+ * State University, licença Apache 2.0. Veja {@code AVISOS-DE-TERCEIROS.md}.
  *
  * <p>A ordem de inserção é significativa: {@code xColors=random} sorteia uma paleta
  * por índice sobre {@code Object.keys(palette)}, que no JavaScript segue a ordem de

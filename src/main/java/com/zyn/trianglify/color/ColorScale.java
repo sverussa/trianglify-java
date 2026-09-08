@@ -7,6 +7,9 @@ import java.util.Map;
  * Porte de {@code chroma.scale(colors).mode(space)} — a escala de gradiente que o
  * Trianglify usa nos eixos X e Y.
  *
+ * <p>chroma.js © 2011-2019 Gregor Aisch, licença BSD 3-Clause. Veja
+ * {@code AVISOS-DE-TERCEIROS.md}.
+ *
  * <p>Reproduz também o cache do chroma-js, que <em>não</em> é apenas uma otimização:
  * a chave do cache é {@code floor(t * 10000)}, mas a cor guardada foi calculada com o
  * {@code t} exato da <em>primeira</em> chamada que caiu naquele balde. Dois valores de

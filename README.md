@@ -190,5 +190,10 @@ trianglify-java/
 
 ## Licença
 
-O Trianglify original é GPL-3.0 (Quinn Rohlf) e o Delaunator é ISC (Mapbox). Por ser um trabalho
-derivado de ambos, este porte segue a GPL-3.0.
+GPL-3.0 — texto completo em [LICENSE](LICENSE).
+
+Este projeto é um trabalho derivado do [Trianglify](https://github.com/qrohlf/trianglify) (GPL-3.0,
+Quinn Rohlf), e traz portes do [Delaunator](https://github.com/mapbox/delaunator) (ISC, Mapbox) e do
+[chroma.js](https://github.com/gka/chroma.js) (BSD 3-Clause, Gregor Aisch), além das paletas do
+[ColorBrewer](https://colorbrewer2.org) (Apache 2.0). A origem de cada parte e o texto das licenças
+estão em [AVISOS-DE-TERCEIROS.md](AVISOS-DE-TERCEIROS.md).

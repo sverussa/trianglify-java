@@ -4,6 +4,9 @@ package com.zyn.trianglify.color;
  * Porte das partes do chroma-js 2.1.0 usadas pelo Trianglify: conversão
  * sRGB &harr; CIE L*a*b*, interpolação e serialização CSS.
  *
+ * <p>chroma.js © 2011-2019 Gregor Aisch, licença BSD 3-Clause. Veja
+ * {@code AVISOS-DE-TERCEIROS.md}.
+ *
  * <p>Assim como no chroma-js, os canais RGB são mantidos como {@code double}
  * (apenas <em>clampados</em> em [0,255], nunca arredondados); o arredondamento
  * só acontece na saída {@link #css()}. Guardar os canais como inteiros aqui
