@@ -28,7 +28,9 @@ JavaFX na primeira execução — não precisa instalar nada além do JDK.
 ![a janela](tela.png)
 
 Na abertura, uma tela de splash mostra um padrão gerado na hora — diferente a cada execução — e é
-por trás dela que a janela principal é montada. A mesma imagem vira o ícone da janela.
+por trás dela que a janela principal é montada. A mesma arte vira o ícone da aplicação, inclusive o
+que aparece no Dock enquanto ela roda (recortado nos cantos, como manda o macOS) — nenhum arquivo de
+imagem precisa entrar no repositório para isso.
 
 ![a tela de abertura](splash.png)
 
