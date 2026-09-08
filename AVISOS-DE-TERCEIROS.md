@@ -4,7 +4,9 @@ Este projeto é um trabalho derivado: boa parte do código é um porte, para Jav
 JavaScript existentes. Como o Trianglify é licenciado sob a GPL-3.0, o projeto como um todo é
 distribuído sob a GPL-3.0 — veja [LICENSE](LICENSE).
 
-Abaixo, a origem de cada parte e a licença correspondente.
+Abaixo, a origem de cada parte e a licença correspondente. As bibliotecas do núcleo e da CLI são
+portes embutidos no código-fonte; o JavaFX e o AtlantaFX, usados só pela interface gráfica, são
+dependências resolvidas pelo Gradle e não ficam no repositório.
 
 ---
 
@@ -119,6 +121,48 @@ público de @bryc, chegada aqui pelo Trianglify.
 
 - Origem: https://github.com/bryc/code/blob/master/jshash/PRNGs.md
 - Domínio público
+
+---
+
+## JavaFX (OpenJFX)
+
+Base da interface gráfica (`src/gui`). Dependência de execução, baixada pelo Gradle.
+
+- Projeto: https://openjfx.io (v23.0.2)
+- Licença: GNU General Public License v2 com a Classpath Exception — https://openjdk.org/legal/gplv2+ce.html
+
+A Classpath Exception autoriza expressamente ligar módulos independentes a estas bibliotecas
+sem que a GPLv2 se estenda a eles, o que torna o uso compatível com a GPL-3.0 deste projeto.
+
+---
+
+## AtlantaFX
+
+Temas e controles adicionais da interface gráfica.
+
+- Projeto: https://github.com/mkpaz/atlantafx (v2.1.0)
+- Copyright © mkpaz
+- Licença: MIT
+
+```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 

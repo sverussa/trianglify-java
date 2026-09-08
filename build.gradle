@@ -5,10 +5,45 @@ plugins {
 group = 'com.zyn'
 version = '1.0.0'
 
-// O projeto não tem dependências externas: a triangulação, as conversões de cor e
-// a rasterização usam apenas a biblioteca padrão do JDK.
+ext {
+    javafxVersion = '23.0.2'
+    atlantafxVersion = '2.1.0'
+    javafxPlatform = detectJavafxPlatform()
+}
+
 repositories {
     mavenCentral()
+}
+
+// ---------------------------------------------------------------------------
+// Source sets
+//
+// O núcleo e a CLI (src/main) continuam sem nenhuma dependência externa e
+// compilando para Java 17. A interface gráfica fica num source set separado
+// porque o AtlantaFX é compilado para Java 21 — assim a GUI não empurra esse
+// requisito para quem só usa a linha de comando.
+// ---------------------------------------------------------------------------
+sourceSets {
+    gui {
+        java.srcDirs = ['src/gui/java']
+        resources.srcDirs = ['src/gui/resources']
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    // Os jars do JavaFX ficam isolados: vão para o --module-path, não para o classpath.
+    javafx
+    guiImplementation.extendsFrom javafx
+}
+
+dependencies {
+    javafx "org.openjfx:javafx-base:$javafxVersion:$javafxPlatform"
+    javafx "org.openjfx:javafx-graphics:$javafxVersion:$javafxPlatform"
+    javafx "org.openjfx:javafx-controls:$javafxVersion:$javafxPlatform"
+
+    guiImplementation "io.github.mkpaz:atlantafx-base:$atlantafxVersion"
 }
 
 application {
@@ -20,6 +55,11 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     // Compila para Java 17 com o JDK que estiver instalado, sem exigir um JDK 17.
     options.release = 17
+}
+
+tasks.named('compileGuiJava') {
+    // O atlantafx-base 2.1.0 é distribuído com bytecode de Java 21.
+    options.release = 21
 }
 
 // Permite `java -jar build/libs/trianglify-java-<versão>.jar`
@@ -43,4 +83,50 @@ tasks.register('gerar') {
     group = 'application'
     description = 'Gera a imagem a partir de trianglify.properties'
     dependsOn tasks.named('run')
+}
+
+// ---------------------------------------------------------------------------
+// Interface gráfica
+//
+// O source set `gui` de propósito não entra no `build`: quem quer só a linha de
+// comando continua compilando com um JDK 17 e sem baixar o JavaFX. A GUI é
+// compilada sob demanda, por `runGui`.
+// ---------------------------------------------------------------------------
+tasks.register('runGui', JavaExec) {
+    group = 'application'
+    description = 'Abre a interface gráfica (JavaFX + AtlantaFX)'
+    dependsOn tasks.named('guiClasses')
+    workingDir = projectDir
+
+    // A classe de entrada não estende Application, para que a JVM não recuse a
+    // inicialização quando o JavaFX vem do module path.
+    mainClass = 'com.zyn.trianglify.gui.Launcher'
+
+    // O JavaFX sai do classpath e entra no module path (subtração preguiçosa).
+    classpath = sourceSets.gui.runtimeClasspath.minus(configurations.javafx)
+
+    doFirst {
+        jvmArgs = ['--module-path', configurations.javafx.asPath,
+                   '--add-modules', 'javafx.controls',
+                   // O JavaFX carrega bibliotecas nativas; sem isto o JDK 22+
+                   // imprime um aviso a cada abertura.
+                   '--enable-native-access=javafx.graphics']
+    }
+}
+
+/**
+ * Classificador do JavaFX para a plataforma atual. Os artefatos do OpenJFX no
+ * Maven Central são específicos por SO/arquitetura e o POM sem classificador não
+ * resolve sozinho no Gradle, então a escolha é feita aqui.
+ */
+static String detectJavafxPlatform() {
+    def os = System.getProperty('os.name').toLowerCase()
+    def arch = System.getProperty('os.arch').toLowerCase()
+    def aarch64 = arch in ['aarch64', 'arm64']
+
+    if (os.contains('mac') || os.contains('darwin')) return aarch64 ? 'mac-aarch64' : 'mac'
+    if (os.contains('windows')) return 'win'
+    if (os.contains('linux')) return aarch64 ? 'linux-aarch64' : 'linux'
+
+    throw new GradleException("plataforma sem build do JavaFX publicada: $os / $arch")
 }

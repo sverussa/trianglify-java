@@ -1,0 +1,134 @@
+/*
+ * Estilos próprios da janela do Trianglify.
+ *
+ * Tudo aqui é escrito em cima das variáveis do AtlantaFX (-color-bg-*,
+ * -color-border-*, -color-fg-*), então trocar o tema no cabeçalho reajusta
+ * estas regras junto, sem nenhum código.
+ */
+
+/* --------------------------------------------------------------------------
+   Cabeçalho
+   -------------------------------------------------------------------------- */
+
+.app-header {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: transparent transparent -color-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.app-header .app-mark {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 8, 0, 0, 2);
+}
+
+/* --------------------------------------------------------------------------
+   Barra lateral
+   -------------------------------------------------------------------------- */
+
+.sidebar {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: transparent -color-border-subtle transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar .scroll-pane,
+.sidebar .scroll-pane > .viewport,
+.sidebar .settings-pane {
+    -fx-background-color: transparent;
+}
+
+/* Símbolos usados no lugar de ícones — o projeto não carrega fonte de ícones. */
+.glyph {
+    -fx-font-size: 1.25em;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.sidebar-actions {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-border-subtle transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+/*
+ * Faixa que mostra a paleta resolvida sob cada combo de cor.
+ *
+ * Só a borda é definida aqui, de propósito: o gradiente é montado em código e
+ * qualquer propriedade -fx-background-* nesta regra faria o CSS reconstruir o
+ * fundo do zero e apagar esse gradiente. Borda e fundo são propriedades
+ * independentes, então a borda pode continuar acompanhando o tema.
+ */
+.palette-strip,
+.palette-swatch {
+    -fx-border-radius: 4;
+    -fx-border-color: -color-border-subtle;
+    -fx-border-width: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Pré-visualização
+   -------------------------------------------------------------------------- */
+
+.preview-pane {
+    -fx-background-color: -color-bg-inset;
+}
+
+.preview-frame {
+    -fx-background-color: -color-bg-default;
+}
+
+.busy-overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.25);
+}
+
+.status-bar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-border-subtle transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* --------------------------------------------------------------------------
+   Tela de abertura
+   -------------------------------------------------------------------------- */
+
+.splash-root {
+    -fx-background-color: #101317;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(255, 255, 255, 0.16);
+    -fx-border-width: 1;
+    /* Recorta a imagem de fundo nos cantos arredondados. */
+    -fx-background-insets: 0;
+}
+
+.splash-root > .image-view,
+.splash-root > .region {
+    -fx-background-radius: 14;
+}
+
+.splash-scrim {
+    -fx-background-color: linear-gradient(to bottom,
+        rgba(8, 10, 14, 0.0) 0%,
+        rgba(8, 10, 14, 0.35) 45%,
+        rgba(8, 10, 14, 0.92) 100%);
+    -fx-background-radius: 14;
+}
+
+.splash-title {
+    -fx-text-fill: white;
+    -fx-font-size: 2.2em;
+    -fx-font-weight: bold;
+}
+
+.splash-subtitle {
+    -fx-text-fill: rgba(255, 255, 255, 0.72);
+    -fx-font-size: 1em;
+}
+
+.splash-status {
+    -fx-text-fill: rgba(255, 255, 255, 0.55);
+    -fx-font-size: 0.85em;
+    -fx-padding: 12 0 6 0;
+}
+
+.splash-root .progress-bar {
+    -fx-background-color: transparent;
+}

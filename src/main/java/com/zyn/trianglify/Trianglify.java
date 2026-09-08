@@ -92,8 +92,12 @@ public final class Trianglify {
     /**
      * Traduz atalhos como {@code random} ou um nome de paleta em uma lista de cores.
      * Também aceita uma lista de hexadecimais separada por vírgulas.
+     *
+     * <p>É público para que a interface gráfica possa mostrar a paleta resolvida
+     * sem repetir estas regras. Note que {@code random} consome um número do
+     * {@code rand}, então a ordem das chamadas importa (veja {@link #generate}).
      */
-    private static String[] processColorOpts(String colorOpt, Mulberry32 rand) {
+    public static String[] processColorOpts(String colorOpt, Mulberry32 rand) {
         if (colorOpt.contains(",")) {
             return colorOpt.split(",");
         }
