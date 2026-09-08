@@ -50,12 +50,40 @@ public final class Options {
     public int svgCoordinateDecimals = 1;
     public boolean svgIncludeNamespace = true;
 
+    // --- animação ---
+    /** Duração máxima aceita para o arquivo animado, em segundos. */
+    public static final double MAX_ANIM_DURATION = 120;
+
+    /** Sementes visitadas, separadas por vírgula. {@code null} deriva de {@link #seed}. */
+    public String animSeeds = null;
+    /** Quantas sementes derivar quando {@link #animSeeds} não é informado. */
+    public int animSeedCount = 6;
+    /** Duração de uma transição entre duas sementes, em segundos. */
+    public double animTransition = 2.5;
+    /** Pausa sobre cada semente, entre uma transição e a próxima, em segundos. */
+    public double animHold = 0.8;
+    /** Multiplicador global de velocidade: divide a transição e a pausa. */
+    public double animSpeed = 1;
+    /** Duração do arquivo exportado, em segundos (no máximo {@value #MAX_ANIM_DURATION}). */
+    public double animDuration = 12;
+    public int animFps = 30;
+    /** Escala aplicada a largura/altura só no arquivo animado. */
+    public double animScale = 1;
+    /** {@code gif} ou {@code mp4}. */
+    public String animFormat = "gif";
+    public String animFile = "trianglify-anim.gif";
+    /** {@code auto}, {@code ffmpeg} ou {@code java} — quem codifica o GIF. */
+    public String animEncoder = "auto";
+
     private static final List<String> KNOWN = List.of(
             "width", "height", "cellSize", "variance", "seed", "points",
             "xColors", "yColors", "colorSpace", "colorFunction", "colorFunction.arg",
             "fill", "strokeWidth",
             "output.file", "output.format", "output.scale",
-            "svg.coordinateDecimals", "svg.includeNamespace");
+            "svg.coordinateDecimals", "svg.includeNamespace",
+            "anim.seeds", "anim.seedCount", "anim.transition", "anim.hold", "anim.speed",
+            "anim.duration", "anim.fps", "anim.scale", "anim.format", "anim.file",
+            "anim.encoder");
 
     /** Carrega o arquivo de propriedades e aplica os overrides de linha de comando. */
     public static Options load(Path file, Map<String, String> overrides) throws IOException {
@@ -106,6 +134,18 @@ public final class Options {
         o.svgCoordinateDecimals = intOf(merged, "svg.coordinateDecimals", o.svgCoordinateDecimals);
         o.svgIncludeNamespace = boolOf(merged, "svg.includeNamespace", o.svgIncludeNamespace);
 
+        o.animSeeds = strOf(merged, "anim.seeds", o.animSeeds);
+        o.animSeedCount = intOf(merged, "anim.seedCount", o.animSeedCount);
+        o.animTransition = doubleOf(merged, "anim.transition", o.animTransition);
+        o.animHold = doubleOf(merged, "anim.hold", o.animHold);
+        o.animSpeed = doubleOf(merged, "anim.speed", o.animSpeed);
+        o.animDuration = doubleOf(merged, "anim.duration", o.animDuration);
+        o.animFps = intOf(merged, "anim.fps", o.animFps);
+        o.animScale = doubleOf(merged, "anim.scale", o.animScale);
+        o.animFormat = strOf(merged, "anim.format", o.animFormat).toLowerCase();
+        o.animFile = strOf(merged, "anim.file", o.animFile);
+        o.animEncoder = strOf(merged, "anim.encoder", o.animEncoder).toLowerCase();
+
         o.validate();
         return o;
     }
@@ -120,6 +160,46 @@ public final class Options {
         }
         if (!List.of("lab", "rgb").contains(colorSpace)) {
             throw new IllegalArgumentException("colorSpace inválido: " + colorSpace + " (use lab ou rgb)");
+        }
+        validateAnimation();
+    }
+
+    /**
+     * Confere os parâmetros de animação. Roda sempre, mesmo em execuções que só
+     * geram a imagem parada: um erro de digitação em {@code anim.*} aparece na
+     * hora de carregar o arquivo, e não só quando alguém tenta animar.
+     */
+    private void validateAnimation() {
+        if (animSeedCount < 2) {
+            throw new IllegalArgumentException(
+                    "anim.seedCount inválido: " + animSeedCount + " (mínimo 2)");
+        }
+        if (!(animTransition > 0)) {
+            throw new IllegalArgumentException("anim.transition inválido: " + animTransition);
+        }
+        if (!(animHold >= 0)) {
+            throw new IllegalArgumentException("anim.hold inválido: " + animHold);
+        }
+        if (!(animSpeed > 0)) {
+            throw new IllegalArgumentException("anim.speed inválido: " + animSpeed);
+        }
+        if (!(animDuration > 0) || animDuration > MAX_ANIM_DURATION) {
+            throw new IllegalArgumentException("anim.duration inválido: " + animDuration
+                    + " (use um valor entre 0 e " + (int) MAX_ANIM_DURATION + " segundos)");
+        }
+        if (animFps < 1 || animFps > 60) {
+            throw new IllegalArgumentException("anim.fps inválido: " + animFps + " (use de 1 a 60)");
+        }
+        if (!(animScale > 0)) {
+            throw new IllegalArgumentException("anim.scale inválido: " + animScale);
+        }
+        if (!List.of("gif", "mp4").contains(animFormat)) {
+            throw new IllegalArgumentException(
+                    "anim.format inválido: " + animFormat + " (use gif ou mp4)");
+        }
+        if (!List.of("auto", "ffmpeg", "java").contains(animEncoder)) {
+            throw new IllegalArgumentException(
+                    "anim.encoder inválido: " + animEncoder + " (use auto, ffmpeg ou java)");
         }
     }
 

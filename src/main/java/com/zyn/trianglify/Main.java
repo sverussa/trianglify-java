@@ -1,5 +1,7 @@
 package com.zyn.trianglify;
 
+import com.zyn.trianglify.anim.Animation;
+import com.zyn.trianglify.anim.AnimationExporter;
 import com.zyn.trianglify.color.ColorBrewer;
 
 import javax.imageio.ImageIO;
@@ -29,6 +31,14 @@ public final class Main {
     private static final String DEFAULT_CONFIG = "trianglify.properties";
 
     public static void main(String[] args) {
+        // Precisa ser a primeira coisa, antes de qualquer classe do AWT carregar.
+        //
+        // Sem isto o Java2D acorda o toolkit gráfico (no macOS, a AppKit) só para
+        // rasterizar um BufferedImage, e com ele vem a thread AWT-Shutdown, que
+        // não é daemon: o programa termina o trabalho e a JVM fica presa esperando
+        // por ela — 8 segundos numa geração simples, minutos ao exportar uma
+        // animação. Nada aqui abre janela, então o modo headless é o certo.
+        System.setProperty("java.awt.headless", "true");
         try {
             run(args);
         } catch (IllegalArgumentException e) {
@@ -45,6 +55,7 @@ public final class Main {
         Path configPath = null;
         String dumpJson = null;
         boolean quiet = false;
+        boolean animate = false;
 
         for (String arg : args) {
             if (arg.equals("-h") || arg.equals("--help")) {
@@ -53,6 +64,8 @@ public final class Main {
             } else if (arg.equals("--listar-paletas")) {
                 ColorBrewer.PALETTES.keySet().forEach(System.out::println);
                 return;
+            } else if (arg.equals("-a") || arg.equals("--animar")) {
+                animate = true;
             } else if (arg.equals("-q") || arg.equals("--quiet")) {
                 quiet = true;
             } else if (arg.startsWith("--config=")) {
@@ -71,6 +84,12 @@ public final class Main {
         if (configPath == null) configPath = findDefaultConfig();
 
         Options opts = Options.load(configPath, overrides);
+
+        if (animate) {
+            animate(opts, configPath, quiet);
+            return;
+        }
+
         long t0 = System.nanoTime();
         Pattern pattern = Trianglify.generate(opts);
         long genMs = (System.nanoTime() - t0) / 1_000_000;
@@ -109,6 +128,62 @@ public final class Main {
                     + "  seed=" + (opts.seed == null ? "(aleatória)" : opts.seed));
             System.out.println(pattern.points.length + " pontos, "
                     + pattern.polys.size() + " triângulos, " + genMs + " ms");
+        }
+    }
+
+    /** Gera e grava o arquivo animado descrito pelas propriedades {@code anim.*}. */
+    private static void animate(Options opts, Path configPath, boolean quiet) throws IOException {
+        Animation animation = new Animation(opts);
+        Path target = AnimationExporter.withExtension(Paths.get(opts.animFile), opts.animFormat);
+        int[] size = AnimationExporter.frameSize(opts);
+        int frames = AnimationExporter.frameCount(opts);
+
+        if (!quiet) {
+            System.out.println("config: " + (configPath == null ? "(padrões)" : configPath.toAbsolutePath()));
+            System.out.println("sementes: " + String.join(" → ", animation.seeds())
+                    + " → " + animation.seeds().get(0));
+            System.out.printf("%d × %d px  ·  %d quadros a %d fps  ·  %.1f s%n",
+                    size[0], size[1], frames, opts.animFps, frames / (double) opts.animFps);
+            System.out.printf("transição %.2f s  ·  pausa %.2f s  ·  velocidade %s×  ·  volta completa %.1f s%n",
+                    opts.animTransition / opts.animSpeed, opts.animHold / opts.animSpeed,
+                    Pattern.number(opts.animSpeed), animation.cycleSeconds());
+
+            double aligned = animation.loopFriendlyDuration(opts.animDuration);
+            if (Math.abs(aligned - opts.animDuration) > 0.05) {
+                System.out.printf(
+                        "dica: com anim.duration=%s o fim emenda no começo sem solavanco%n",
+                        Pattern.number(Math.round(aligned * 10) / 10.0));
+            }
+        }
+
+        AnimationExporter.Progress progress = quiet
+                ? (done, total) -> true
+                : new ConsoleProgress();
+        AnimationExporter.Result result = AnimationExporter.export(opts, target, progress);
+
+        if (!quiet) {
+            System.out.println();
+            System.out.println(result.encoder());
+            System.out.printf("%s -> %s  (%.1f MB, %d ms)%n",
+                    opts.animFormat.toUpperCase(), result.file().toAbsolutePath(),
+                    result.fileSize() / 1_048_576.0, result.elapsedMs());
+        }
+    }
+
+    /** Barra de progresso de uma linha só, reescrita a cada ponto percentual. */
+    private static final class ConsoleProgress implements AnimationExporter.Progress {
+        private int lastPercent = -1;
+
+        @Override
+        public boolean frame(int done, int total) {
+            int percent = done * 100 / total;
+            if (percent == lastPercent && done < total) return true;
+            lastPercent = percent;
+            int filled = percent * 30 / 100;
+            System.out.print("\r[" + "#".repeat(filled) + " ".repeat(30 - filled) + "] "
+                    + percent + "%  quadro " + done + "/" + total);
+            System.out.flush();
+            return true;
         }
     }
 
@@ -166,10 +241,12 @@ public final class Main {
 
                 uso:
                   trianglify [--config=arquivo.properties] [--chave=valor ...]
+                  trianglify --animar [--chave=valor ...]
 
                 opções:
                   --config=ARQ      arquivo de propriedades (padrão: ./trianglify.properties)
                   --chave=valor     sobrescreve uma propriedade (ex.: --seed=abc --width=1920)
+                  -a, --animar      gera o arquivo animado descrito pelas propriedades anim.*
                   --listar-paletas  lista as paletas de cores disponíveis, uma por linha
                   --dump-json=ARQ   grava geometria e cores em JSON (para verificação)
                   -q, --quiet       não imprime o resumo
@@ -180,12 +257,16 @@ public final class Main {
                   xColors, yColors, colorSpace, colorFunction, colorFunction.arg,
                   fill, strokeWidth,
                   output.file, output.format, output.scale,
-                  svg.coordinateDecimals, svg.includeNamespace
+                  svg.coordinateDecimals, svg.includeNamespace,
+                  anim.seeds, anim.seedCount, anim.transition, anim.hold, anim.speed,
+                  anim.duration, anim.fps, anim.scale, anim.format, anim.file, anim.encoder
 
                 exemplos:
                   trianglify
                   trianglify --seed=praia --xColors=Spectral --output.file=praia.png
                   trianglify --width=2560 --height=1440 --output.scale=2
+                  trianglify --animar --anim.format=gif --anim.duration=8
+                  trianglify --animar --anim.format=mp4 --anim.speed=2 --anim.file=malha.mp4
                 """);
     }
 }

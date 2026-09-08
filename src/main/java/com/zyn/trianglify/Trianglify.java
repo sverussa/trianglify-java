@@ -38,22 +38,18 @@ public final class Trianglify {
         // RNG padrão, usado para sorteio de paleta e geração de pontos
         Mulberry32 rand = new Mulberry32(opts.seed);
 
-        String[] xColors = processColorOpts(opts.xColors, rand);
-        String[] yColors = "match".equals(opts.yColors)
-                ? xColors
-                : processColorOpts(opts.yColors, rand);
+        String[][] colors = resolveColors(opts, rand);
 
-        ColorScale xScale = new ColorScale(xColors, opts.colorSpace);
-        ColorScale yScale = new ColorScale(yColors, opts.colorSpace);
+        ColorScale xScale = new ColorScale(colors[0], opts.colorSpace);
+        ColorScale yScale = new ColorScale(colors[1], opts.colorSpace);
 
-        double[][] points = opts.points != null ? opts.points : getPoints(opts, rand);
+        double[][] points = opts.points != null ? opts.points : gridPoints(opts, rand);
 
         int[] geomIndices = Delaunator.from(points).triangles;
 
         // RNG separado (semente "salgada") para as cores, de modo que trocar a
         // colorFunction não altere a geometria do padrão
-        Mulberry32 cRand = new Mulberry32(
-                opts.seed == null || opts.seed.isEmpty() ? null : opts.seed + COLOR_SEED_SALT);
+        Mulberry32 cRand = colorRandom(opts.seed);
 
         ColorFunction colorFunction = ColorFunctions.byName(opts.colorFunction, opts.colorFunctionArg);
 
@@ -90,6 +86,33 @@ public final class Trianglify {
     }
 
     /**
+     * Paletas efetivas dos dois eixos, consumindo o {@code rand} na mesma ordem
+     * que {@link #generate} — primeiro o eixo X, depois o Y (que só sorteia
+     * quando não é {@code match}).
+     *
+     * <p>É público porque tanto a interface gráfica quanto o motor de animação
+     * precisam da paleta resolvida sem gerar o padrão inteiro. Chame-o antes de
+     * {@link #gridPoints}, ou a grade de pontos sairá diferente.
+     *
+     * @return {@code {xColors, yColors}}
+     */
+    public static String[][] resolveColors(Options opts, Mulberry32 rand) {
+        String[] xColors = processColorOpts(opts.xColors, rand);
+        String[] yColors = "match".equals(opts.yColors)
+                ? xColors
+                : processColorOpts(opts.yColors, rand);
+        return new String[][]{xColors, yColors};
+    }
+
+    /**
+     * RNG dedicado às cores, com a semente "salgada" — o mesmo que
+     * {@link #generate} usa, exposto para quem colore triângulos por fora.
+     */
+    public static Mulberry32 colorRandom(String seed) {
+        return new Mulberry32(seed == null || seed.isEmpty() ? null : seed + COLOR_SEED_SALT);
+    }
+
+    /**
      * Traduz atalhos como {@code random} ou um nome de paleta em uma lista de cores.
      * Também aceita uma lista de hexadecimais separada por vírgulas.
      *
@@ -118,8 +141,13 @@ public final class Trianglify {
      * centro, deslocado por um jitter proporcional a {@code cellSize * variance}.
      * A grade é estendida em 2 células para cada lado ("bleed") para garantir que
      * a triangulação cubra as bordas da imagem.
+     *
+     * <p>Como a contagem de linhas e colunas depende só de largura, altura e
+     * {@code cellSize}, duas sementes diferentes produzem grades com os mesmos
+     * pontos-base na mesma ordem — mudando apenas o jitter. É isso que permite
+     * interpolar ponto a ponto entre sementes na animação.
      */
-    private static double[][] getPoints(Options opts, Mulberry32 random) {
+    public static double[][] gridPoints(Options opts, Mulberry32 random) {
         double cellSize = opts.cellSize;
 
         int colCount = (int) Math.floor(opts.width / cellSize) + 4;

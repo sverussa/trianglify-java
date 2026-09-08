@@ -19,6 +19,9 @@ Para a linha de comando, um JDK 17 ou mais novo. Para a interface gráfica, um J
 (o AtlantaFX é distribuído com bytecode de Java 21). O Gradle vem junto pelo wrapper e baixa o
 JavaFX na primeira execução — não precisa instalar nada além do JDK.
 
+Para exportar animação em **MP4** é preciso ter o [ffmpeg](https://ffmpeg.org) no PATH
+(`brew install ffmpeg`). O **GIF** dispensa: sem o ffmpeg, ele é codificado pelo próprio JDK.
+
 ## Interface gráfica
 
 ```bash
@@ -120,6 +123,88 @@ O arquivo de propriedades é procurado no diretório atual e, se não estiver l�
 localização do jar — então as quatro formas acima encontram o `trianglify.properties` da raiz sem
 configuração extra.
 
+## Animação
+
+```bash
+./animar.sh
+```
+
+Gera um GIF (ou MP4) em que a malha se move continuamente, passeando por várias sementes.
+
+```bash
+./animar.sh --anim.format=mp4 --anim.duration=20
+./animar.sh --anim.speed=2 --anim.file=saida/rapido.gif
+./animar.sh --seed=praia --anim.seedCount=8 --anim.scale=0.5
+```
+
+### Como o movimento acontece
+
+A grade de pontos do Trianglify tem sempre o mesmo número de linhas e colunas para as mesmas
+`width`, `height` e `cellSize` — a semente muda apenas o *jitter* de cada ponto. O ponto `i` da
+semente A e o ponto `i` da semente B são, portanto, o mesmo ponto da grade em dois lugares
+diferentes, e interpolar entre os dois é um movimento natural: nenhum ponto aparece ou some no
+caminho.
+
+A triangulação é refeita a cada quadro. É isso que faz a coisa parecer uma malha viva em vez de um
+*morph* rígido: quando dois pontos se cruzam, a aresta entre eles troca sozinha, exatamente como o
+algoritmo de Delaunay manda. As cores acompanham — se as sementes caem em paletas diferentes (o caso
+de `xColors=random`), cada triângulo é colorido pelas duas escalas e as duas cores são misturadas no
+mesmo espaço de interpolação do gerador.
+
+A curva de interpolação é um *smoothstep*, então a transição nasce e morre parada, sem o solavanco
+de um movimento linear ao entrar e sair de cada pausa.
+
+Nos instantes de pausa o quadro é **idêntico** ao que a geração estática produz para aquela semente:
+os pontos são os mesmos, as escalas de cor são construídas do zero a cada quadro (o cache dependente
+de ordem da `ColorScale` não atravessa quadros) e a mistura de cores é pulada quando não há o que
+misturar.
+
+### O tempo
+
+Três parâmetros controlam o ritmo, e um quarto controla o tamanho do arquivo:
+
+| | |
+| --- | --- |
+| `anim.transition` | quanto dura a passagem de uma semente para a próxima |
+| `anim.hold` | quanto tempo a imagem fica parada sobre cada semente |
+| `anim.speed` | multiplicador global: divide os dois valores acima |
+| `anim.duration` | duração do arquivo exportado, no máximo **120 s** |
+
+A **volta completa** — `seedCount × (transition + hold) / speed` — é o tempo até a animação voltar
+à primeira semente. Uma duração que seja múltiplo dela emenda o fim no começo sem solavanco, o que
+importa bastante num GIF, que repete para sempre. O `--animar` calcula esse valor e sugere o
+múltiplo mais próximo.
+
+### GIF ou MP4?
+
+Os dois formatos existem porque servem a coisas diferentes:
+
+| | GIF | MP4 (H.264) |
+| --- | --- | --- |
+| Cores | 256 por quadro | milhões |
+| Tamanho (640×400, 6,6 s) | ~4 MB | ~0,3 MB |
+| Onde toca | qualquer lugar, sozinho, em loop | precisa de um player/`<video>` |
+| Dependência | nenhuma (ou ffmpeg) | ffmpeg |
+
+**Para um degradê suave como o do Trianglify, o MP4 é tecnicamente muito melhor**: uma ordem de
+grandeza menor e sem as faixas que aparecem ao reduzir um gradiente a 256 cores. O GIF ganha em
+conveniência — cola em qualquer lugar, roda sozinho e repete sem player. Por isso o padrão é GIF, e
+o MP4 fica a um `--anim.format=mp4` de distância.
+
+Quem codifica:
+
+- **`ffmpeg`**, quando está instalado. Obrigatório para MP4. No GIF, monta a paleta a partir do
+  próprio vídeo e aplica *dithering* ao reduzi-la — a diferença nos degradês é visível.
+- **O codificador do JDK**, quando não está. Grava GIF animado sem depender de nada instalado, com
+  uma paleta por quadro, mas sem *dithering*.
+
+A escolha é automática (`anim.encoder = auto`) e pode ser forçada com `ffmpeg` ou `java`.
+
+Nenhum arquivo temporário é usado no caminho: os quadros vão para o `ffmpeg` como pixels crus pelo
+cano de entrada. Uma animação de dois minutos em Full HD renderia alguns gigabytes de PNGs
+intermediários; assim não ocupa disco nenhum. Os quadros também são desenhados em paralelo — 10 s em
+1280×720 a 30 fps saem em cerca de 4 s numa máquina de 8 núcleos.
+
 ## Parâmetros
 
 Todos ficam em [`trianglify.properties`](trianglify.properties), que tem a descrição de cada um.
@@ -144,6 +229,17 @@ Em resumo:
 | `output.scale` | `1` | Supersampling do PNG (2 = telas de alta densidade) |
 | `svg.coordinateDecimals` | `1` | Casas decimais no SVG; `-1` desativa o arredondamento |
 | `svg.includeNamespace` | `true` | Inclui `xmlns` no `<svg>` |
+| `anim.seeds` | — | Sementes visitadas, separadas por vírgula; vazio = derivadas de `seed` |
+| `anim.seedCount` | `6` | Quantas sementes derivar quando `anim.seeds` está vazio |
+| `anim.transition` | `2.5` | Duração de uma transição, em segundos |
+| `anim.hold` | `0.8` | Pausa sobre cada semente, em segundos |
+| `anim.speed` | `1` | Multiplicador de velocidade: divide a transição e a pausa |
+| `anim.duration` | `12` | Duração do arquivo animado, em segundos (máximo `120`) |
+| `anim.fps` | `30` | Quadros por segundo |
+| `anim.scale` | `1` | Escala aplicada às dimensões só no arquivo animado |
+| `anim.format` | `gif` | `gif` ou `mp4` |
+| `anim.file` | `saida/trianglify-anim.gif` | Caminho do arquivo animado |
+| `anim.encoder` | `auto` | `auto`, `ffmpeg` ou `java` |
 
 Paletas disponíveis: `YlGn`, `YlGnBu`, `GnBu`, `BuGn`, `PuBuGn`, `PuBu`, `BuPu`, `RdPu`, `PuRd`,
 `OrRd`, `YlOrRd`, `YlOrBr`, `Purples`, `Blues`, `Greens`, `Oranges`, `Reds`, `Greys`, `PuOr`,
@@ -156,7 +252,7 @@ O pipeline é o mesmo do original:
 1. **Semente → RNG** ([`Mulberry32`](src/main/java/com/zyn/trianglify/util/Mulberry32.java)) — um PRNG
    de 32 bits cuja semente textual passa antes por um hash `xmur3`. É o que torna cada padrão
    reproduzível.
-2. **Grade de pontos com jitter** ([`Trianglify#getPoints`](src/main/java/com/zyn/trianglify/Trianglify.java))
+2. **Grade de pontos com jitter** ([`Trianglify#gridPoints`](src/main/java/com/zyn/trianglify/Trianglify.java))
    — um ponto por célula, deslocado por `±cellSize * variance / 2`. A grade é estendida em duas
    células para cada lado para que a triangulação cubra as bordas.
 3. **Triangulação de Delaunay** ([`Delaunator`](src/main/java/com/zyn/trianglify/Delaunator.java)) —
@@ -219,6 +315,7 @@ trianglify-java/
 ├── build.gradle / settings.gradle
 ├── gradlew / gradle/wrapper/        # wrapper do Gradle 9.7.1
 ├── run.sh                           # atalho para a linha de comando
+├── animar.sh                        # atalho para exportar a animação
 ├── gui.sh                           # atalho para a interface gráfica
 ├── src/main/java/com/zyn/trianglify/         # núcleo + CLI, sem dependências
 │   ├── Main.java                    # CLI
@@ -227,6 +324,11 @@ trianglify-java/
 │   ├── Delaunator.java              # triangulação de Delaunay
 │   ├── Pattern.java                 # renderização SVG e PNG
 │   ├── Poly.java
+│   ├── anim/                        # animação
+│   │   ├── Animation.java           # interpolação entre sementes, quadro a quadro
+│   │   ├── AnimationExporter.java   # renderização paralela + escolha do codificador
+│   │   ├── GifEncoder.java          # GIF animado pelo javax.imageio
+│   │   └── FfmpegEncoder.java       # GIF/MP4 pelo ffmpeg, por cano de pixels
 │   ├── color/                       # ChromaColor, ColorScale, ColorFunctions, ColorBrewer
 │   └── util/Mulberry32.java         # PRNG com semente
 └── src/gui/java/com/zyn/trianglify/gui/      # interface, JavaFX + AtlantaFX
