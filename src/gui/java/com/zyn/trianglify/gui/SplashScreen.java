@@ -30,8 +30,8 @@ final class SplashScreen {
     static final int HEIGHT = 340;
 
     private static final double CORNER_RADIUS = 14;
-    private static final Duration FADE_IN = Duration.millis(420);
-    private static final Duration FADE_OUT = Duration.millis(280);
+    private static final Duration FADE_IN = Duration.millis(820);
+    private static final Duration FADE_OUT = Duration.millis(480);
 
     private final Stage stage = new Stage(StageStyle.TRANSPARENT);
     private final StackPane root;

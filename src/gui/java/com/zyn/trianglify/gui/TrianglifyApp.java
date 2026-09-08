@@ -31,7 +31,7 @@ public final class TrianglifyApp extends Application {
     private static final String DEFAULT_CONFIG = "trianglify.properties";
 
     private static final Duration WARMUP = Duration.millis(500);
-    private static final Duration HOLD = Duration.millis(450);
+    private static final Duration HOLD = Duration.millis(5000);
     private static final Duration REVEAL = Duration.millis(320);
 
     private SplashScreen splash;
