@@ -62,8 +62,10 @@ final class PreviewPane extends StackPane {
         busyOverlay.setVisible(busy);
     }
 
-    void showError(String text) {
+    /** Substitui a imagem por um recado — um erro, ou um arquivo que não dá para exibir. */
+    void showMessage(String text) {
         frame.setVisible(false);
+        imageView.setImage(null);
         message.setText(text);
         message.setVisible(true);
     }

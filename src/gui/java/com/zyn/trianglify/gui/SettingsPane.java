@@ -6,6 +6,8 @@ import atlantafx.base.layout.InputGroup;
 import atlantafx.base.theme.Styles;
 import atlantafx.base.util.IntegerStringConverter;
 import com.zyn.trianglify.Options;
+import com.zyn.trianglify.anim.Animation;
+import com.zyn.trianglify.anim.AnimationExporter;
 import com.zyn.trianglify.color.ColorBrewer;
 import javafx.geometry.HorizontalDirection;
 import javafx.geometry.Insets;
@@ -68,6 +70,19 @@ final class SettingsPane extends VBox {
     private final ToggleSwitch fillSwitch = new ToggleSwitch("Preencher os triângulos");
     private final Slider strokeWidthSlider = new Slider(0, 8, 0);
 
+    // animação
+    private final Slider seedCountSlider = new Slider(2, 12, 6);
+    private final Slider transitionSlider = new Slider(0.3, 8, 2.5);
+    private final Slider holdSlider = new Slider(0, 4, 0.8);
+    private final Slider speedSlider = new Slider(0.25, 4, 1);
+    private final Label cycleLabel = new Label();
+
+    // vídeo
+    private final Slider durationSlider = new Slider(1, Options.MAX_ANIM_DURATION, 12);
+    private final Slider fpsSlider = new Slider(10, 60, 30);
+    private final Slider animScaleSlider = new Slider(0.25, 2, 1);
+    private final Label videoLabel = new Label();
+
     // exportação
     private final Spinner<Double> outputScaleSpinner = scaleSpinner();
 
@@ -78,6 +93,9 @@ final class SettingsPane extends VBox {
     private boolean updating;
 
     private Runnable onChange = () -> {
+    };
+
+    private Runnable onAnimationChange = () -> {
     };
 
     SettingsPane() {
@@ -91,15 +109,25 @@ final class SettingsPane extends VBox {
         buildSeed();
         buildColors();
         buildStroke();
+        buildAnimation();
         buildExport();
 
         wireChangeListeners();
         applyFrom(new Options());
     }
 
-    /** Chamado sempre que qualquer parâmetro muda. */
+    /** Chamado quando muda algo que altera a imagem. */
     void setOnChange(Runnable onChange) {
         this.onChange = onChange;
+    }
+
+    /**
+     * Chamado quando muda só o ritmo da animação. Fica separado do
+     * {@link #setOnChange} porque mexer na velocidade não precisa refazer a
+     * imagem parada — basta a prévia animada adotar o novo tempo.
+     */
+    void setOnAnimationChange(Runnable onAnimationChange) {
+        this.onAnimationChange = onAnimationChange;
     }
 
     // ------------------------------------------------------------------
@@ -206,6 +234,34 @@ final class SettingsPane extends VBox {
                 + "o resultado vira um wireframe."));
     }
 
+    private void buildAnimation() {
+        section("Animação");
+
+        add(sliderRow("Sementes visitadas", seedCountSlider, v -> Math.round(v) + " sementes"));
+        add(hint("A malha passeia por estas sementes e volta à primeira. Como a grade tem sempre "
+                + "as mesmas linhas e colunas, cada ponto se desloca até a posição correspondente "
+                + "na semente seguinte."));
+
+        add(sliderRow("Duração da transição", transitionSlider, v -> String.format("%.1f s", v)));
+        add(sliderRow("Pausa em cada semente", holdSlider, v -> String.format("%.1f s", v)));
+        add(sliderRow("Velocidade", speedSlider, v -> String.format("%.2f×", v)));
+        add(hint("A velocidade divide os dois tempos acima, para acelerar tudo de uma vez."));
+
+        cycleLabel.getStyleClass().addAll(Styles.TEXT_SMALL, Styles.TEXT_MUTED);
+        cycleLabel.setWrapText(true);
+        add(cycleLabel);
+
+        section("Vídeo");
+
+        add(sliderRow("Duração do arquivo", durationSlider, v -> String.format("%.0f s", v)));
+        add(sliderRow("Quadros por segundo", fpsSlider, v -> Math.round(v) + " fps"));
+        add(sliderRow("Escala do vídeo", animScaleSlider, v -> String.format("%.2f×", v)));
+
+        videoLabel.getStyleClass().addAll(Styles.TEXT_SMALL, Styles.TEXT_SUBTLE);
+        videoLabel.setWrapText(true);
+        add(videoLabel);
+    }
+
     private void buildExport() {
         section("Exportação");
 
@@ -242,11 +298,26 @@ final class SettingsPane extends VBox {
 
         o.outputScale = outputScaleSpinner.getValue();
 
+        o.animSeedCount = (int) Math.round(seedCountSlider.getValue());
+        o.animTransition = transitionSlider.getValue();
+        o.animHold = holdSlider.getValue();
+        o.animSpeed = speedSlider.getValue();
+        o.animDuration = Math.round(durationSlider.getValue());
+        o.animFps = (int) Math.round(fpsSlider.getValue());
+        o.animScale = animScaleSlider.getValue();
+
         // preservados do arquivo carregado
         o.outputFile = base.outputFile;
         o.outputFormat = base.outputFormat;
         o.svgCoordinateDecimals = base.svgCoordinateDecimals;
         o.svgIncludeNamespace = base.svgIncludeNamespace;
+        // A lista explícita de sementes não tem controle aqui, mas é preservada:
+        // quando o arquivo traz uma, ela manda e o controle de quantidade fica
+        // desligado. O formato e o destino do arquivo animado vêm do menu Exportar.
+        o.animSeeds = base.animSeeds;
+        o.animFormat = base.animFormat;
+        o.animFile = base.animFile;
+        o.animEncoder = base.animEncoder;
 
         return o;
     }
@@ -278,10 +349,20 @@ final class SettingsPane extends VBox {
             strokeWidthSlider.setValue(clamp(o.strokeWidth, strokeWidthSlider));
 
             outputScaleSpinner.getValueFactory().setValue(clampScale(o.outputScale));
+
+            seedCountSlider.setValue(clamp(o.animSeedCount, seedCountSlider));
+            seedCountSlider.setDisable(o.animSeeds != null && !o.animSeeds.isBlank());
+            transitionSlider.setValue(clamp(o.animTransition, transitionSlider));
+            holdSlider.setValue(clamp(o.animHold, holdSlider));
+            speedSlider.setValue(clamp(o.animSpeed, speedSlider));
+            durationSlider.setValue(clamp(o.animDuration, durationSlider));
+            fpsSlider.setValue(clamp(o.animFps, fpsSlider));
+            animScaleSlider.setValue(clamp(o.animScale, animScaleSlider));
         } finally {
             updating = false;
         }
         refreshStrips();
+        refreshAnimationSummary();
         onChange.run();
     }
 
@@ -306,6 +387,17 @@ final class SettingsPane extends VBox {
         p.put("output.scale", trim(o.outputScale));
         p.put("svg.coordinateDecimals", String.valueOf(o.svgCoordinateDecimals));
         p.put("svg.includeNamespace", String.valueOf(o.svgIncludeNamespace));
+        p.put("anim.seeds", o.animSeeds == null ? "" : o.animSeeds);
+        p.put("anim.seedCount", String.valueOf(o.animSeedCount));
+        p.put("anim.transition", trim(round(o.animTransition, 2)));
+        p.put("anim.hold", trim(round(o.animHold, 2)));
+        p.put("anim.speed", trim(round(o.animSpeed, 2)));
+        p.put("anim.duration", trim(o.animDuration));
+        p.put("anim.fps", String.valueOf(o.animFps));
+        p.put("anim.scale", trim(round(o.animScale, 2)));
+        p.put("anim.format", o.animFormat);
+        p.put("anim.file", o.animFile);
+        p.put("anim.encoder", o.animEncoder);
 
         StringBuilder sb = new StringBuilder("# Gerado pela interface gráfica do trianglify-java.\n");
         sb.append("# Serve tanto para a janela quanto para a linha de comando:\n");
@@ -322,6 +414,7 @@ final class SettingsPane extends VBox {
         Runnable fire = () -> {
             if (updating) return;
             refreshStrips();
+            refreshAnimationSummary();
             onChange.run();
         };
 
@@ -344,6 +437,49 @@ final class SettingsPane extends VBox {
         fillSwitch.selectedProperty().addListener((o, a, b) -> fire.run());
         strokeWidthSlider.valueProperty().addListener((o, a, b) -> fire.run());
         // A escala só afeta o arquivo salvo, então não precisa regerar a prévia.
+
+        // O ritmo da animação não mexe na imagem parada: avisa só quem está tocando.
+        Runnable retime = () -> {
+            if (updating) return;
+            refreshAnimationSummary();
+            onAnimationChange.run();
+        };
+        seedCountSlider.valueProperty().addListener((o, a, b) -> retime.run());
+        transitionSlider.valueProperty().addListener((o, a, b) -> retime.run());
+        holdSlider.valueProperty().addListener((o, a, b) -> retime.run());
+        speedSlider.valueProperty().addListener((o, a, b) -> retime.run());
+
+        // Estes três só entram na hora de gravar o arquivo: nem a imagem nem a
+        // prévia animada mudam, só o resumo do que vai sair.
+        Runnable resummarize = () -> {
+            if (!updating) refreshAnimationSummary();
+        };
+        durationSlider.valueProperty().addListener((o, a, b) -> resummarize.run());
+        fpsSlider.valueProperty().addListener((o, a, b) -> resummarize.run());
+        animScaleSlider.valueProperty().addListener((o, a, b) -> resummarize.run());
+    }
+
+    /**
+     * Atualiza os dois resumos da seção de animação: o tempo da volta completa e
+     * o que vai sair no arquivo.
+     */
+    private void refreshAnimationSummary() {
+        Options o = toOptions();
+        double cycle = Animation.cycleSeconds(o);
+
+        String seeds = o.animSeeds == null || o.animSeeds.isBlank()
+                ? ""
+                : "  ·  usando a lista anim.seeds do arquivo";
+        cycleLabel.setText(String.format("Volta completa: %.1f s%s", cycle, seeds));
+
+        int frames = AnimationExporter.frameCount(o);
+        int[] size = AnimationExporter.frameSize(o);
+        double aligned = Animation.alignToCycle(o.animDuration, cycle);
+        String loop = Math.abs(aligned - o.animDuration) < 0.05
+                ? "o fim emenda no começo"
+                : String.format("com %.0f s o fim emendaria no começo", aligned);
+        videoLabel.setText(String.format("%d quadros  ·  %d × %d px  ·  %s",
+                frames, size[0], size[1], loop));
     }
 
     /** Atualiza as faixas que mostram as paletas efetivamente em uso. */
@@ -518,6 +654,12 @@ final class SettingsPane extends VBox {
 
     private static double clampScale(double v) {
         return Math.max(0.5, Math.min(8, Math.round(v * 2) / 2.0));
+    }
+
+    /** Arredonda o valor contínuo de um slider antes de gravá-lo no arquivo. */
+    private static double round(double v, int decimals) {
+        double factor = Math.pow(10, decimals);
+        return Math.round(v * factor) / factor;
     }
 
     /** Formata um double sem o ".0" supérfluo, como o arquivo de propriedades faz. */

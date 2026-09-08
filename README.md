@@ -47,11 +47,30 @@ Na janela:
   Dá para desligar e usar só o botão **Gerar**.
 - **Sete temas de cor** do AtlantaFX no seletor do cabeçalho — Primer, Nord e Cupertino em claro e
   escuro, mais o Dracula. A escolha é lembrada entre execuções.
-- **Exportar** em PNG (na escala escolhida na barra lateral) ou SVG.
+- **Exportar** em PNG (na escala escolhida na barra lateral), SVG, GIF animado ou MP4.
 - **Arquivo → Abrir/Salvar `.properties`**, o mesmo formato da linha de comando: dá para montar a
   configuração na janela e depois usá-la em scripts com `./run.sh --config=...`.
 
 A janela abre com o `trianglify.properties` do diretório do projeto, se ele existir.
+
+### Animação na janela
+
+![a animação na janela](animacao.png)
+
+A barra acima da prévia escolhe o que a área central mostra:
+
+- **Imagem** — o padrão parado, com a semente configurada.
+- **Animação** — a malha se movendo ao vivo, exatamente o que vai para o arquivo. O rodapé mostra em
+  que ponto do ciclo ela está e a que taxa a prévia está conseguindo desenhar. Os quadros são
+  gerados numa thread própria e o relógio é o tempo real: num padrão pesado a prévia perde fluidez,
+  mas não anda em câmera lenta — ela pula quadros e continua na velocidade certa.
+- **Arquivo** — o último arquivo exportado. O GIF toca aqui dentro, pelo próprio JavaFX; para o MP4
+  (e para um GIF grande demais para caber na memória) aparece o caminho e um botão para abrir no
+  programa do sistema.
+
+Mexer nos controles de ritmo — sementes, transição, pausa, velocidade — não interrompe a animação:
+ela adota o novo tempo sem voltar ao começo. Durante a exportação a prévia é pausada, para que a
+gravação fique com os núcleos só para ela, e volta a tocar quando o arquivo termina.
 
 Dois pontos que a janela não cobre, de propósito: a lista explícita de `points` (a janela sempre usa
 a grade) e os ajustes `svg.*`. Ambos são preservados ao abrir e salvar um `.properties`, então nada
@@ -129,7 +148,9 @@ configuração extra.
 ./animar.sh
 ```
 
-Gera um GIF (ou MP4) em que a malha se move continuamente, passeando por várias sementes.
+Gera um GIF (ou MP4) em que a malha se move continuamente, passeando por várias sementes. A mesma
+animação pode ser ajustada e vista ao vivo na janela — veja
+[Animação na janela](#animação-na-janela).
 
 ```bash
 ./animar.sh --anim.format=mp4 --anim.duration=20
@@ -338,6 +359,7 @@ trianglify-java/
     ├── MainView.java                # cabeçalho, prévia, rodapé, exportação
     ├── SettingsPane.java            # barra lateral
     ├── PreviewPane.java
+    ├── AnimationPlayer.java         # prévia animada, numa thread própria
     ├── GeneratorService.java        # geração fora da thread da interface
     ├── Artwork.java                 # arte do splash e ícone, gerados na abertura
     ├── Palettes.java / AppTheme.java / AppStyles.java / FxImages.java

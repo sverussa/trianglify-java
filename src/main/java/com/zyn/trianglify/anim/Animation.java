@@ -94,15 +94,27 @@ public final class Animation {
     }
 
     /**
-     * A duração pedida, ajustada para o múltiplo inteiro de {@link #cycleSeconds()}
-     * mais próximo — o que faz o GIF emendar sem solavanco. Nunca passa do limite
-     * de {@link Options#MAX_ANIM_DURATION} nem devolve menos de uma volta.
+     * O mesmo valor, calculado só a partir da configuração — sem montar as grades
+     * de pontos. Serve para a interface mostrar o número enquanto o usuário mexe
+     * nos controles.
      */
-    public double loopFriendlyDuration(double wanted) {
-        double cycle = cycleSeconds();
+    public static double cycleSeconds(Options opts) {
+        return seedCount(opts) * (opts.animHold + opts.animTransition) / opts.animSpeed;
+    }
+
+    /**
+     * A duração pedida, ajustada para o múltiplo inteiro de {@code cycle} mais
+     * próximo — o que faz o GIF emendar sem solavanco. Nunca passa do limite de
+     * {@link Options#MAX_ANIM_DURATION} nem devolve menos de uma volta.
+     */
+    public static double alignToCycle(double wanted, double cycle) {
         long laps = Math.max(1, Math.round(wanted / cycle));
         while (laps > 1 && laps * cycle > Options.MAX_ANIM_DURATION) laps--;
         return Math.min(laps * cycle, Options.MAX_ANIM_DURATION);
+    }
+
+    public double loopFriendlyDuration(double wanted) {
+        return alignToCycle(wanted, cycleSeconds());
     }
 
     // ------------------------------------------------------------------
@@ -226,12 +238,22 @@ public final class Animation {
      * um sufixo — o que mantém a animação inteira reproduzível a partir de uma
      * única semente.
      */
+    private static int seedCount(Options opts) {
+        return opts.animSeeds == null || opts.animSeeds.isBlank()
+                ? opts.animSeedCount
+                : listedSeeds(opts.animSeeds).size();
+    }
+
+    private static List<String> listedSeeds(String raw) {
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
     private static List<String> seeds(Options opts) {
         if (opts.animSeeds != null && !opts.animSeeds.isBlank()) {
-            List<String> listed = Arrays.stream(opts.animSeeds.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .toList();
+            List<String> listed = listedSeeds(opts.animSeeds);
             if (listed.size() < 2) {
                 throw new IllegalArgumentException(
                         "anim.seeds precisa de pelo menos duas sementes: " + opts.animSeeds);

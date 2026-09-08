@@ -85,6 +85,17 @@
     -fx-border-width: 1 0 0 0;
 }
 
+/*
+ * Barra da área central, com a escolha entre a imagem parada, a animação ao
+ * vivo e o último arquivo exportado. Fica no mesmo tom do cabeçalho, separada
+ * da prévia por uma linha, para não parecer parte da imagem.
+ */
+.preview-bar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: transparent transparent -color-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
 /* --------------------------------------------------------------------------
    Tela de abertura
    -------------------------------------------------------------------------- */
